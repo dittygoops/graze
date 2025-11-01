@@ -270,6 +270,7 @@
   padding: 1.5rem;
   transition: all 0.3s ease;
   animation: slideUp 0.3s ease;
+  cursor: pointer;
 }
 
 .restaurant-card:hover {
@@ -278,17 +279,50 @@
   border-color: #646cff;
 }
 
+.restaurant-card:active {
+  transform: translateY(-2px);
+}
+
 .restaurant-name {
   margin: 0 0 0.75rem;
   font-size: 1.3rem;
   color: #333;
 }
 
+.restaurant-address {
+  color: #555;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+.restaurant-rating {
+  color: #666;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.rating-count {
+  font-weight: 400;
+  color: #888;
+  font-size: 0.85rem;
+}
+
 .restaurant-location {
   color: #666;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+  font-family: 'Courier New', monospace;
+}
+
+.restaurant-place-id {
+  color: #888;
+  font-size: 0.75rem;
   margin-bottom: 1rem;
   font-family: 'Courier New', monospace;
+  word-break: break-all;
+  opacity: 0.7;
 }
 
 /* Tags */
@@ -392,8 +426,24 @@
     color: #f0f0f0;
   }
 
+  .restaurant-address {
+    color: #bbb;
+  }
+
+  .restaurant-rating {
+    color: #ccc;
+  }
+
+  .rating-count {
+    color: #999;
+  }
+
   .restaurant-location {
     color: #aaa;
+  }
+
+  .restaurant-place-id {
+    color: #888;
   }
 
   .error-container {

@@ -3,8 +3,8 @@ import './App.css'
 import type { Restaurant } from './types'
 
 function App() {
-  const [latitude, setLatitude] = useState<string>('37.7749')
-  const [longitude, setLongitude] = useState<string>('-122.4194')
+  const [latitude, setLatitude] = useState<string>('33.4140')
+  const [longitude, setLongitude] = useState<string>('-111.9301')
   const [radius, setRadius] = useState<string>('1000')
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [loading, setLoading] = useState<boolean>(false)
@@ -50,6 +50,18 @@ function App() {
   const filteredRestaurants = restaurants.filter(restaurant => {
     return !restaurant.tags.some(tag => excludedTags.has(tag))
   })
+
+  const handleRestaurantClick = (restaurant: Restaurant) => {
+    // Open Google Maps with the restaurant's place_id
+    if (restaurant.place_id) {
+      const url = `https://www.google.com/maps/place/?q=place_id:${restaurant.place_id}`
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } else if (restaurant.lat && restaurant.long) {
+      // Fallback to coordinates if place_id is not available
+      const url = `https://www.google.com/maps/search/?api=1&query=${restaurant.lat},${restaurant.long}`
+      window.open(url, '_blank', 'noopener,noreferrer')
+    }
+  }
 
   return (
     <div className="app-container">
@@ -170,17 +182,37 @@ function App() {
 
           <div className="restaurant-list">
             {filteredRestaurants.map((restaurant, index) => (
-              <div key={index} className="restaurant-card">
+              <div 
+                key={index} 
+                className="restaurant-card"
+                onClick={() => handleRestaurantClick(restaurant)}
+              >
                 <h3 className="restaurant-name">{restaurant.name}</h3>
-                <div className="restaurant-location">
-                  📍 {restaurant.lat.toFixed(4)}, {restaurant.long.toFixed(4)}
-                </div>
+                
+                {restaurant.rating && (
+                  <div className="restaurant-rating">
+                    ⭐ {restaurant.rating.toFixed(1)}
+                    {restaurant.total_ratings && (
+                      <span className="rating-count"> ({restaurant.total_ratings} reviews)</span>
+                    )}
+                  </div>
+                )}
+                
+                {restaurant.address && (
+                  <div className="restaurant-address">
+                    📍 {restaurant.address}
+                  </div>
+                )}
+                
                 <div className="tags-container">
                   {restaurant.tags.map((tag, tagIndex) => (
                     <span
                       key={tagIndex}
                       className="tag"
-                      onClick={() => handleTagClick(tag)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleTagClick(tag)
+                      }}
                     >
                       {tag}
                     </span>

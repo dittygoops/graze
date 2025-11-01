@@ -26,40 +26,45 @@ def get_supabase_client():
     
     return _supabase_client
 
-def get_restaurant_tags(restaurant_name):
+def get_restaurant_from_db(restaurant_name):
     """
-    Get tags for a restaurant from the database.
+    Get a restaurant record from the database.
     
     Args:
         restaurant_name (str): Name of the restaurant
     
     Returns:
-        list: List of tags, or None if restaurant not found
+        dict: Restaurant data with all fields, or None if not found
     """
     supabase = get_supabase_client()
     if not supabase:
         return None
     
     try:
-        response = supabase.table('Restaurant').select('tags').eq('name', restaurant_name).execute()
+        response = supabase.table('Restaurant').select('*').eq('name', restaurant_name).execute()
         
         if response.data and len(response.data) > 0:
-            tags = response.data[0].get('tags')
-            return tags if tags else None
+            return response.data[0]
         
         return None
     
     except Exception as e:
-        print(f"Error fetching restaurant tags from database: {e}")
+        print(f"Error fetching restaurant from database: {e}")
         return None
 
-def store_restaurant_tags(restaurant_name, tags):
+def store_restaurant(restaurant_name, tags, address=None, rating=None, total_ratings=None, lat=None, long=None, place_id=None):
     """
-    Store restaurant and tags in the database.
+    Store restaurant with all fields in the database.
     
     Args:
         restaurant_name (str): Name of the restaurant
         tags (list): List of tags
+        address (str): Restaurant address
+        rating (float): Restaurant rating
+        total_ratings (int): Total number of ratings
+        lat (float): Latitude
+        long (float): Longitude
+        place_id (str): Google Places ID
     
     Returns:
         bool: True if successful, False otherwise
@@ -72,21 +77,27 @@ def store_restaurant_tags(restaurant_name, tags):
         # Check if restaurant already exists
         existing = supabase.table('Restaurant').select('id').eq('name', restaurant_name).execute()
         
+        restaurant_data = {
+            'name': restaurant_name,
+            'tags': tags,
+            'address': address,
+            'rating': rating,
+            'total_ratings': total_ratings,
+            'lat': lat,
+            'long': long,
+            'place_id': place_id
+        }
+        
         if existing.data and len(existing.data) > 0:
             # Update existing restaurant
-            supabase.table('Restaurant').update({
-                'tags': tags
-            }).eq('name', restaurant_name).execute()
+            supabase.table('Restaurant').update(restaurant_data).eq('name', restaurant_name).execute()
         else:
             # Insert new restaurant
-            supabase.table('Restaurant').insert({
-                'name': restaurant_name,
-                'tags': tags
-            }).execute()
+            supabase.table('Restaurant').insert(restaurant_data).execute()
         
         return True
     
     except Exception as e:
-        print(f"Error storing restaurant tags in database: {e}")
+        print(f"Error storing restaurant in database: {e}")
         return False
 
