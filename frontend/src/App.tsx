@@ -1,32 +1,35 @@
 import { useState } from 'react'
 import './App.css'
 import type { Restaurant } from './types'
+import MapPicker from './components/MapPicker'
 
 function App() {
-  const [latitude, setLatitude] = useState<string>('33.4140')
-  const [longitude, setLongitude] = useState<string>('-111.9301')
-  const [radius, setRadius] = useState<string>('1000')
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [radiusMiles, setRadiusMiles] = useState<number>(0.5)
+
+  const RADIUS_OPTIONS = [0.25, 0.5, 1, 2, 5, 10]
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string>('')
   const [excludedTags, setExcludedTags] = useState<Set<string>>(new Set())
 
   const handleSearch = async () => {
+    if (!location) {
+      setError('Click on the map to select a location first')
+      return
+    }
+
     setLoading(true)
     setError('')
     setExcludedTags(new Set())
-    
+
     try {
+      const radiusMeters = Math.round(radiusMiles * 1609.34)
       const response = await fetch(
-        `http://localhost:5001/api/restaurants?lat=${latitude}&long=${longitude}&radius=${radius}`
+        `http://localhost:5001/api/restaurants?lat=${location.lat}&long=${location.lng}&radius=${radiusMeters}`
       )
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch restaurants')
-      }
-      
-      const data = await response.json()
-      setRestaurants(data)
+      if (!response.ok) throw new Error('Failed to fetch restaurants')
+      setRestaurants(await response.json())
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
       setRestaurants([])
@@ -37,109 +40,78 @@ function App() {
 
   const handleTagClick = (tag: string) => {
     setExcludedTags(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(tag)) {
-        newSet.delete(tag)
-      } else {
-        newSet.add(tag)
-      }
-      return newSet
+      const next = new Set(prev)
+      if (next.has(tag)) next.delete(tag)
+      else next.add(tag)
+      return next
     })
   }
 
-  const filteredRestaurants = restaurants.filter(restaurant => {
-    return !restaurant.tags.some(tag => excludedTags.has(tag))
-  })
+  const filteredRestaurants = restaurants.filter(r => !r.tags.some(tag => excludedTags.has(tag)))
 
   const handleRestaurantClick = (restaurant: Restaurant) => {
-    // Open Google Maps with the restaurant's place_id
     if (restaurant.place_id) {
-      const url = `https://www.google.com/maps/place/?q=place_id:${restaurant.place_id}`
-      window.open(url, '_blank', 'noopener,noreferrer')
+      window.open(`https://www.google.com/maps/place/?q=place_id:${restaurant.place_id}`, '_blank', 'noopener,noreferrer')
     } else if (restaurant.lat && restaurant.long) {
-      // Fallback to coordinates if place_id is not available
-      const url = `https://www.google.com/maps/search/?api=1&query=${restaurant.lat},${restaurant.long}`
-      window.open(url, '_blank', 'noopener,noreferrer')
+      window.open(`https://www.google.com/maps/search/?api=1&query=${restaurant.lat},${restaurant.long}`, '_blank', 'noopener,noreferrer')
     }
+  }
+
+  const renderStars = (rating: number) => {
+    const full = Math.round(rating)
+    return '★'.repeat(full) + '☆'.repeat(5 - full)
   }
 
   return (
     <div className="app-container">
       <header className="app-header">
         <h1>🍽️ Restaurant Finder</h1>
-        <p>Discover restaurants and filter by tags</p>
+        <p>Click the map to pick a spot, then search for restaurants nearby</p>
       </header>
 
-      {/* Map Placeholder Section */}
       <div className="map-section">
-        <div className="map-placeholder">
-          <span className="map-icon">🗺️</span>
-          <p>Map View (Coming Soon)</p>
-        </div>
-        
-        <div className="search-controls">
-          <div className="input-group">
-            <label htmlFor="latitude">Latitude</label>
-            <input
-              id="latitude"
-              type="number"
-              step="any"
-              value={latitude}
-              onChange={(e) => setLatitude(e.target.value)}
-              placeholder="37.7749"
-              autoComplete="off"
-              data-form-type="other"
-            />
+        <MapPicker
+          onLocationSelect={(lat, lng) => setLocation({ lat, lng })}
+          selectedLocation={location}
+          radiusMiles={radiusMiles}
+        />
+
+        <div className="search-bar">
+          <div className="location-status">
+            <div className={`location-dot ${location ? 'active' : ''}`} />
+            <span>
+              {location
+                ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`
+                : 'Click the map to set a location'}
+            </span>
           </div>
-          
-          <div className="input-group">
-            <label htmlFor="longitude">Longitude</label>
-            <input
-              id="longitude"
-              type="number"
-              step="any"
-              value={longitude}
-              onChange={(e) => setLongitude(e.target.value)}
-              placeholder="-122.4194"
-              autoComplete="off"
-              data-form-type="other"
-            />
+
+          <div className="search-divider" />
+
+          <div className="radius-group">
+            {RADIUS_OPTIONS.map(miles => (
+              <button
+                key={miles}
+                className={`radius-option ${radiusMiles === miles ? 'active' : ''}`}
+                onClick={() => setRadiusMiles(miles)}
+              >
+                {miles} mi
+              </button>
+            ))}
           </div>
-          
-          <div className="input-group">
-            <label htmlFor="radius">Radius (meters)</label>
-            <input
-              id="radius"
-              type="number"
-              value={radius}
-              onChange={(e) => setRadius(e.target.value)}
-              placeholder="1000"
-              autoComplete="off"
-              data-form-type="other"
-            />
-          </div>
-          
-          <button 
-            className="search-button" 
-            onClick={handleSearch}
-            disabled={loading}
-          >
-            {loading ? 'Searching...' : '🔍 Search'}
+
+          <button className="search-button" onClick={handleSearch} disabled={loading || !location}>
+            {loading ? 'Searching…' : 'Search'}
           </button>
         </div>
       </div>
 
-      {/* Excluded Tags Section */}
       {excludedTags.size > 0 && (
         <div className="excluded-tags-section">
-          <h3>🚫 Excluded Tags (Click to re-include)</h3>
+          <h3>Excluded tags — click to re-include</h3>
           <div className="excluded-tags-container">
             {Array.from(excludedTags).map(tag => (
-              <span
-                key={tag}
-                className="tag excluded-tag"
-                onClick={() => handleTagClick(tag)}
-              >
+              <span key={tag} className="tag excluded-tag" onClick={() => handleTagClick(tag)}>
                 {tag} ✕
               </span>
             ))}
@@ -147,20 +119,16 @@ function App() {
         </div>
       )}
 
-      {/* Loading State */}
       {loading && (
         <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p className="loading-text">Finding delicious restaurants...</p>
+          <div className="loading-spinner" />
+          <p className="loading-text">Finding restaurants nearby…</p>
           <div className="loading-dots">
-            <span></span>
-            <span></span>
-            <span></span>
+            <span /><span /><span />
           </div>
         </div>
       )}
 
-      {/* Error State */}
       {error && (
         <div className="error-container">
           <span className="error-icon">⚠️</span>
@@ -168,52 +136,39 @@ function App() {
         </div>
       )}
 
-      {/* Results Section */}
       {!loading && restaurants.length > 0 && (
         <div className="results-section">
           <div className="results-header">
-            <h2>Found {filteredRestaurants.length} {filteredRestaurants.length === 1 ? 'Restaurant' : 'Restaurants'}</h2>
+            <h2>{filteredRestaurants.length} {filteredRestaurants.length === 1 ? 'restaurant' : 'restaurants'}</h2>
             {excludedTags.size > 0 && (
-              <p className="filter-info">
-                ({restaurants.length - filteredRestaurants.length} hidden by filters)
-              </p>
+              <p className="filter-info">{restaurants.length - filteredRestaurants.length} hidden by filters</p>
             )}
           </div>
 
           <div className="restaurant-list">
             {filteredRestaurants.map((restaurant, index) => (
-              <div 
-                key={index} 
-                className="restaurant-card"
-                onClick={() => handleRestaurantClick(restaurant)}
-              >
+              <div key={index} className="restaurant-card" onClick={() => handleRestaurantClick(restaurant)}>
                 <h3 className="restaurant-name">{restaurant.name}</h3>
-                
-                {restaurant.rating && (
-                  <div className="restaurant-rating">
-                    ⭐ {restaurant.rating.toFixed(1)}
-                    {restaurant.total_ratings && (
-                      <span className="rating-count"> ({restaurant.total_ratings} reviews)</span>
-                    )}
-                  </div>
-                )}
-                
+
+                <div className="restaurant-meta">
+                  {restaurant.rating && (
+                    <div className="restaurant-rating">
+                      <span className="rating-stars">{renderStars(restaurant.rating)}</span>
+                      <span>{restaurant.rating.toFixed(1)}</span>
+                      {restaurant.total_ratings && (
+                        <span className="rating-count">({restaurant.total_ratings.toLocaleString()})</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {restaurant.address && (
-                  <div className="restaurant-address">
-                    📍 {restaurant.address}
-                  </div>
+                  <div className="restaurant-address">📍 {restaurant.address}</div>
                 )}
-                
+
                 <div className="tags-container">
-                  {restaurant.tags.map((tag, tagIndex) => (
-                    <span
-                      key={tagIndex}
-                      className="tag"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleTagClick(tag)
-                      }}
-                    >
+                  {restaurant.tags.map((tag, i) => (
+                    <span key={i} className="tag" onClick={e => { e.stopPropagation(); handleTagClick(tag) }}>
                       {tag}
                     </span>
                   ))}
@@ -224,11 +179,10 @@ function App() {
         </div>
       )}
 
-      {/* Empty State */}
       {!loading && !error && restaurants.length === 0 && (
         <div className="empty-state">
-          <span className="empty-icon">🔍</span>
-          <p>Enter coordinates and click Search to find restaurants</p>
+          <span className="empty-icon">🗺️</span>
+          <p>{location ? 'Hit Search to find restaurants nearby' : 'Drop a pin on the map to get started'}</p>
         </div>
       )}
     </div>
