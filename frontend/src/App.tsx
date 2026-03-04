@@ -65,7 +65,7 @@ function App() {
   return (
     <div className="app-container">
       <header className="app-header">
-        <h1>Graze</h1>
+        <h1>Grazeria</h1>
         <p>Click the map to pick a spot, then search for restaurants nearby</p>
       </header>
 
