@@ -1,5 +1,5 @@
 {
-  "name": "restaurant-lists-backend",
+  "name": "graze-backend",
   "version": "1.0.0",
   "scripts": {
     "dev": "ts-node-dev --respawn src/index.ts",

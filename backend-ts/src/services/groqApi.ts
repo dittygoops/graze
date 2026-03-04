@@ -29,20 +29,36 @@ function extractTagsFromText(text: string): string[] {
   return parts.length ? normalizeTags(parts.slice(0, 5)) : ['restaurant'];
 }
 
+const CANONICAL_TAGS = [
+  // Cuisine
+  'american', 'italian', 'mexican', 'chinese', 'japanese', 'korean', 'thai', 'indian',
+  'mediterranean', 'greek', 'french', 'spanish', 'vietnamese', 'asian', 'middle eastern',
+  'latin', 'caribbean', 'african', 'fusion',
+  // Food type
+  'pizza', 'sushi', 'burgers', 'tacos', 'sandwiches', 'salads', 'seafood', 'steakhouse',
+  'bbq', 'wings', 'noodles', 'ramen', 'pho', 'dumplings', 'burritos', 'pasta', 'breakfast',
+  'brunch', 'desserts', 'bakery', 'coffee', 'smoothies', 'ice cream',
+  // Dining style
+  'fast food', 'casual dining', 'fine dining', 'cafe', 'food truck', 'buffet', 'bar and grill',
+  'sports bar', 'hotel restaurant', 'diner', 'bistro', 'takeout', 'delivery',
+  // Vibe / attributes
+  'family friendly', 'date night', 'late night', 'healthy', 'vegetarian', 'vegan',
+  'halal', 'kosher', 'outdoor seating', 'upscale', 'quick bites',
+];
+
 export async function generateRestaurantTags(restaurant: GooglePlacesRestaurant): Promise<string[]> {
   const client = getGroqClient();
   if (!client) return ['restaurant'];
 
   try {
-    const prompt = `Given a restaurant named "${restaurant.name}" with the following types: ${restaurant.types.join(', ')}, generate 3-5 short tags that describe this restaurant.
+    const prompt = `Given a restaurant named "${restaurant.name}" with types: ${restaurant.types.join(', ')}, choose 3-5 tags from this list that best describe it:
+
+${CANONICAL_TAGS.join(', ')}
 
 Rules:
-- Use spaces not underscores (e.g. "fast food" not "fast_food")
-- Use the simplest common form (e.g. "pizza" not "pizzeria", "burgers" not "burger joint")
-- Lowercase only
-- No punctuation
-
-Return ONLY a JSON array of strings. Example: ["italian", "fine dining", "romantic"]`;
+- Only use tags from the list above
+- Return ONLY a JSON array of strings, no explanation
+- Example: ["italian", "pizza", "casual dining"]`;
 
     const completion = await client.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
